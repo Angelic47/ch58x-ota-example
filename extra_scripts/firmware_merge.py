@@ -18,8 +18,8 @@ outputDir = os.path.join(buildDir, "mergedFirmware")
 layout = [
     ("entry", entryFirmware, 0x00000000, 4 * 1024),
     ("partitionA", partitionAFirmware, 0x00001000, 216 * 1024),
-    ("partitionB", partitionBFirmware, 0x00011000, 216 * 1024),
-    ("bootloader", bootloaderFirmware, 0x00021000, 12 * 1024)
+    ("partitionB", partitionBFirmware, 0x00037000, 216 * 1024),
+    ("bootloader", bootloaderFirmware, 0x0006D000, 12 * 1024)
 ]
 
 fill_byte = 0xFF
