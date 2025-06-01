@@ -13,6 +13,6 @@ board.update("build.use_builtin_startup_file", "no")
 
 # LDSCRIPT_PATH is defined by forked version of ch32v platformio SCons script
 # As there is no way to overwrite the LDSCRIPT_PATH in the original version script,
-# see builder/frameworks/noneos_sdk_autoota.py
+# see %platform-ch32v-dir%/builder/frameworks/noneos_sdk_autoota.py
 #
 # return join(PROJECT_DIR, "extra_scripts", "ldscripts", "Link_" + board.get("build.series", "")[0:-1].upper() + "x") + "." + bank + ".ld"
