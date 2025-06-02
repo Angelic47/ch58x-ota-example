@@ -12,7 +12,7 @@
 #define OTA_EEPROM_FLASH_OFFSET (0x00077000 - FLASH_ROM_MAX_SIZE)
 
 #define OTA_EEPROM_FLASH_OFFSET_FLAGS (OTA_EEPROM_FLASH_OFFSET + 0x00)
-#define OTA_EEPROM_FLASH_READ_LEN (sizeof(bootloader_flash_eeprom_data_t) / 4)
+#define OTA_EEPROM_FLASH_READ_LEN (sizeof(bootloader_flash_eeprom_data_t))
 #define OTA_EEPROM_FLASH_ERASE_SIZE (EEPROM_PAGE_SIZE)
 
 #endif // __OTA_EEPROM_OFFSETS_H__
