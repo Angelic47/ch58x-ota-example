@@ -1,3 +1,8 @@
+// aes_cmac_impl.c
+// This file contains the implementation of AES-CMAC operations for the CH58x Hardware AES module.
+// Author: Iluna Angelic47 <admin@angelic47.com>
+// SPDX-License-Identifier: Apache-2.0
+
 #include "aes_cmac_impl.h"
 
 #define AES_ENCRYPT LL_Encrypt
