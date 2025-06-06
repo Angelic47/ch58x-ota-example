@@ -18,6 +18,7 @@
 #include "peripheral.h"
 #include "ble_usb_service.h"
 #include "app_usb.h"
+#include "libota.h"
 
 /*********************************************************************
  * MACROS
@@ -38,6 +39,9 @@
 
 // PHY update delay
 #define SBP_PHY_UPDATE_DELAY                 2400
+
+// Assert that firmware is valid delay
+#define SBP_OTA_SUCCESS_EVT_DELAY            3000
 
 // What is the advertising interval when device is discoverable (units of 625us, 80=50ms)
 #define DEFAULT_ADVERTISING_INTERVAL         80
@@ -87,23 +91,7 @@ static uint8_t scanRspData[] = {
     // complete name
     0x12, // length of this data
     GAP_ADTYPE_LOCAL_NAME_COMPLETE,
-    'S',
-    'i',
-    'm',
-    'p',
-    'l',
-    'e',
-    ' ',
-    'P',
-    'e',
-    'r',
-    'i',
-    'p',
-    'h',
-    'e',
-    'r',
-    'a',
-    'l',
+    's', 'i', 'm', 'p', 'l', 'e', ' ', 'P', 'e', 'r', 'i', 'p', 'h', 'e', 'r', 'a', 'l',
     // connection interval range
     0x05, // length of this data
     GAP_ADTYPE_SLAVE_CONN_INTERVAL_RANGE,
@@ -252,6 +240,7 @@ void Peripheral_Init()
     GGS_AddService(GATT_ALL_SERVICES);           // GAP
     GATTServApp_AddService(GATT_ALL_SERVICES);   // GATT attributes
     DevInfo_AddService();                        // Device Information Service
+    OTAProfile_AddService();                     // OTA GATT Profile
     SimpleProfile_AddService(GATT_ALL_SERVICES); // Simple GATT Profile
     ble_usb_add_service(ble_usb_ServiceEvt);
 
@@ -335,7 +324,18 @@ uint16_t Peripheral_ProcessEvent(uint8_t task_id, uint16_t events)
     {
         // Start the Device
         GAPRole_PeripheralStartDevice(Peripheral_TaskID, &Peripheral_BondMgrCBs, &Peripheral_PeripheralCBs);
+        // Wait 3 seconds and assert that firmware is started
+        tmos_start_task(Peripheral_TaskID, SBP_OTA_SUCCESS_EVT, SBP_OTA_SUCCESS_EVT_DELAY);
         return (events ^ SBP_START_DEVICE_EVT);
+    }
+
+    if(events & SBP_OTA_SUCCESS_EVT)
+    {
+        // Assert that firmware is valid
+        PRINT("Firmware seems not crash and is valid, marking OTA success\n");
+        ota_set_flags_flash_mode_flag(FLASH_MODE_FLAG_OK);
+        ota_save_eeprom_flags();
+        return (events ^ SBP_OTA_SUCCESS_EVT);
     }
 
     if(events & SBP_PERIODIC_EVT)

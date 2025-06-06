@@ -10,8 +10,8 @@
 
 typedef enum _current_flash_bank_t
 {
-    FLASH_BANK_A = 0xa5a5a5a,
-    FLASH_BANK_B = 0x5a5a5a5,
+    FLASH_BANK_A = 0xa5a5a5a5,
+    FLASH_BANK_B = 0x5a5a5a5a,
     FLASH_BANK_FAIL_BOOT = 0xdeadbeef,
 } current_flash_bank_t;
 

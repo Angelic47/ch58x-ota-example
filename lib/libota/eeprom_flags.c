@@ -19,11 +19,11 @@ const char *ota_flash_bank_to_string(current_flash_bank_t bank)
     switch (bank)
     {
         case FLASH_BANK_A:
-            return "A";
+            return "Bank A";
         case FLASH_BANK_B:
-            return "B";
+            return "Bank B";
         case FLASH_BANK_FAIL_BOOT:
-            return "Fail Boot";
+            return "All Banks Failed Boot";
         default:
             return "Unknown (First Initialization Maybe)";
     }
@@ -36,9 +36,9 @@ const char *ota_flash_mode_flag_to_string(flash_mode_flag_t flag)
         case FLASH_MODE_FLAG_OK:
             return "OK";
         case FLASH_MODE_FLAG_FLASHED:
-            return "Flashed";
+            return "New OTA Flashed (Waiting for Reboot)";
         case FLASH_MODE_FLAG_FIRSTBOOT:
-            return "First Boot";
+            return "First Boot (First Time After Flashing)";
         default:
             return "Unknown";
     }
@@ -51,7 +51,7 @@ const char *ota_boot_reason_code_to_string(boot_reason_code_t code)
         case REASON_NORMAL:
             return "Normal";
         case REASON_FALLBACK_BOOT:
-            return "Fallback Boot";
+            return "Fallback Boot (Failed to Boot from Previous Bank)";
         default:
             return "Unknown";
     }
@@ -70,10 +70,10 @@ void ota_print_eeprom_flags(void)
 {
     if (!eeprom_already_read)
         ota_get_eeprom_flags();
-    LOG("EEPROM Flags:\r\n");
-    LOG(" - Current Flash Bank: %s\r\n", ota_flash_bank_to_string(current_flash_bank));
-    LOG(" - Flash Mode Flag: %s\r\n", ota_flash_mode_flag_to_string(flash_mode_flag));
-    LOG(" - Boot Reason Code: %s\r\n", ota_boot_reason_code_to_string(boot_reason_code));
+    PRINT("EEPROM Flags:\r\n");
+    PRINT(" - Current Flash Bank: %s\r\n", ota_flash_bank_to_string(current_flash_bank));
+    PRINT(" - Flash Mode Flag: %s\r\n", ota_flash_mode_flag_to_string(flash_mode_flag));
+    PRINT(" - Boot Reason Code: %s\r\n", ota_boot_reason_code_to_string(boot_reason_code));
 }
 
 void ota_set_flags_current_flash_bank(current_flash_bank_t bank)
@@ -95,6 +95,48 @@ void ota_set_flags_boot_reason_code(boot_reason_code_t code)
     if (!eeprom_already_read)
         ota_get_eeprom_flags();
     boot_reason_code = code;
+}
+
+current_flash_bank_t ota_get_flags_current_flash_bank(void)
+{
+    if (!eeprom_already_read)
+        ota_get_eeprom_flags();
+    return current_flash_bank;
+}
+
+flash_mode_flag_t ota_get_flags_flash_mode_flag(void)
+{
+    if (!eeprom_already_read)
+        ota_get_eeprom_flags();
+    return flash_mode_flag;
+}
+
+boot_reason_code_t ota_get_flags_boot_reason_code(void)
+{
+    if (!eeprom_already_read)
+        ota_get_eeprom_flags();
+    return boot_reason_code;
+}
+
+const char *ota_get_flags_current_flash_bank_string(void)
+{
+    if (!eeprom_already_read)
+        ota_get_eeprom_flags();
+    return ota_flash_bank_to_string(current_flash_bank);
+}
+
+const char *ota_get_flags_flash_mode_flag_string(void)
+{
+    if (!eeprom_already_read)
+        ota_get_eeprom_flags();
+    return ota_flash_mode_flag_to_string(flash_mode_flag);
+}
+
+const char *ota_get_flags_boot_reason_code_string(void)
+{
+    if (!eeprom_already_read)
+        ota_get_eeprom_flags();
+    return ota_boot_reason_code_to_string(boot_reason_code);
 }
 
 void ota_save_eeprom_flags(void)

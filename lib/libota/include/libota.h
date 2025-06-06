@@ -10,5 +10,6 @@
 #include "ota_eeprom_offsets.h"
 #include "ota_eeprom_structs.h"
 #include "eeprom_flags.h"
+#include "ota_gatt_profile.h"
 
 #endif // __LIBOTA_H__

@@ -18,6 +18,12 @@ void ota_print_eeprom_flags(void);
 void ota_set_flags_current_flash_bank(current_flash_bank_t bank);
 void ota_set_flags_flash_mode_flag(flash_mode_flag_t flag);
 void ota_set_flags_boot_reason_code(boot_reason_code_t code);
+current_flash_bank_t ota_get_flags_current_flash_bank(void);
+flash_mode_flag_t ota_get_flags_flash_mode_flag(void);
+boot_reason_code_t ota_get_flags_boot_reason_code(void);
+const char *ota_get_flags_current_flash_bank_string(void);
+const char *ota_get_flags_flash_mode_flag_string(void);
+const char *ota_get_flags_boot_reason_code_string(void);
 void ota_save_eeprom_flags(void);
 void ota_assert_boot_ok(void);
 

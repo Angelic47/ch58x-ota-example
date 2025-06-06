@@ -40,7 +40,7 @@
 
 // ble_usb GATT Profile Service UUID
 const uint8_t ble_usb_ServiceUUID[ATT_BT_UUID_SIZE] =
-    {0xf0, 0xff};
+    {0xD0, 0xff};
 
 // Characteristic rx uuid
 const uint8_t ble_usb_RxCharUUID[ATT_BT_UUID_SIZE] =
