@@ -22,7 +22,7 @@ typedef struct _ota_cmd_args_read_t {
     uint32_t address; // Address to read from
     uint32_t length;  // Length of data to read
     uint8_t *buffer;    // Pointer to data buffer where read data will be stored
-    uint32_t buffer_length; // Length of the data buffer
+    uint32_t *buffer_length; // Length of the data buffer
 } ota_cmd_args_read_t;
 
 typedef struct _ota_cmd_args_program_t {
@@ -71,6 +71,9 @@ typedef struct _ota_cmd_args_verify_t {
 // Table for OTA command argument lengths
 extern const uint8_t ota_cmd_args_length_table[];
 
+// Table for OTA command argument if the command has io_buffer
+extern const uint8_t ota_cmd_args_io_buffer_table[];
+
 // 128-bit AES-CMAC Key
 extern const uint8_t ota_aes128_key[16];
 
@@ -78,7 +81,7 @@ bStatus_t ota_cmd_handler(
     const uint8_t *buffer,
     uint32_t length,
     const uint8_t *io_buffer,
-    uint32_t io_buffer_length,
+    uint32_t *io_buffer_length,
     const uint8_t *challenge,
     uint32_t challenge_length,
     const uint8_t *token,

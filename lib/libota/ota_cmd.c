@@ -5,6 +5,7 @@
 
 #include "ota_cmd.h"
 #include "aes_cmac_impl.h"
+#include "ota_gatt_profile.h"
 #include "ota_flash_layout.h"
 #include "eeprom_flags.h"
 #include "ota_async_event.h"
@@ -26,6 +27,18 @@ const uint8_t ota_cmd_args_length_table[OTA_CMD_OPCODE_MAX] = {
     OTA_CMD_ARGS_PROGRAM_LEN, // Program command length
     OTA_CMD_ARGS_ERASE_LEN,   // Erase command length
     OTA_CMD_ARGS_VERIFY_LEN,  // Verify command length
+    OTA_CMD_ARGS_REBOOT_LEN,  // Reboot command length
+    OTA_CMD_ARGS_CONFIRM_LEN, // Confirm command length
+};
+
+// Table for OTA command argument if the command has io_buffer
+const uint8_t ota_cmd_args_io_buffer_table[OTA_CMD_OPCODE_MAX] = {
+    1, // Read command has io_buffer (readout buffer)
+    1, // Program command has io_buffer (firmware buffer)
+    0, // Erase command does not have io_buffer
+    1, // Verify command has io_buffer (sha256 out buffer)
+    0, // Reboot command does not have io_buffer
+    0, // Confirm command does not have io_buffer
 };
 
 /**
@@ -100,7 +113,7 @@ bStatus_t ota_cmd_is_authenticated(
 
     // 2. Calculate the AES-CMAC of the IO buffer (Already aligned)
     // If the IO buffer empty, we set the AES-CMAC to zero
-    if(io_buffer_length != 0) {
+    if(io_buffer_length != 0 && ota_cmd_args_io_buffer_table[buffer[0]] == 1) {
         AES_CMAC(
             (uint8_t *)ota_aes128_key, 
             (uint8_t *)io_buffer, 
@@ -204,11 +217,16 @@ bStatus_t ota_cmd_do_read(ota_cmd_args_read_t *args) {
         return status; // Address or length check failed
     }
 
+    args->length = args->length > *args->buffer_length ? *args->buffer_length : args->length;
+
     FLASH_ROM_READ(
         args->address + args->length,
         args->buffer,
         args->length
     );
+
+    // Update the buffer length to the actual read length
+    *args->buffer_length = args->length;
 
     return SUCCESS;
 }
@@ -237,11 +255,41 @@ bStatus_t ota_cmd_do_program(ota_cmd_args_program_t *args) {
 }
 
 bStatus_t ota_cmd_do_erase(ota_cmd_args_erase_t *args) {
+    // Erase can only be used to erase the flash bank that is not currently active
+    bStatus_t status;
+    status = ota_cmd_address_length_check(
+        args->address, 
+        args->length, 
+        ota_get_flags_current_flash_bank() == FLASH_BANK_A ? FLASH_BANK_B : FLASH_BANK_A
+    );
+
+    if (status != SUCCESS) {
+        return status; // Address or length check failed
+    }
+
     // Schedule an asynchronous erase operation
     return ota_start_async_erase(args->address, args->length);
 }
 
 bStatus_t ota_cmd_do_verify(ota_cmd_args_verify_t *args) {
+    // Verify can be used to verify the flash bank that is currently active or the other bank
+    bStatus_t status;
+    status = ota_cmd_address_length_check(
+        args->address, 
+        args->length, 
+        FLASH_BANK_A
+    );
+    if (status != SUCCESS) {
+        status = ota_cmd_address_length_check(
+            args->address, 
+            args->length, 
+            FLASH_BANK_B
+        );
+    }
+    if (status != SUCCESS) {
+        return status; // Address or length check failed
+    }
+
     // Schedule an asynchronous verify operation
     return ota_start_async_verify(args->address, args->length, args->result, args->result_length);
 }
@@ -261,7 +309,7 @@ bStatus_t ota_cmd_do_confirm(void) {
     ota_set_flags_flash_mode_flag(FLASH_MODE_FLAG_FLASHED);
     ota_set_flags_boot_reason_code(REASON_NORMAL);
     ota_save_eeprom_flags();
-    
+
     // Schedule an asynchronous reboot operation
     return ota_start_async_reboot();
 }
@@ -282,7 +330,7 @@ bStatus_t ota_cmd_dispatcher(
     const uint8_t *buffer,
     uint32_t length,
     const uint8_t *io_buffer,
-    uint32_t io_buffer_length
+    uint32_t *io_buffer_length
 ) {
     ota_cmd_opcode_t opcode = buffer[0]; // First byte is the command opcode
     union {
@@ -292,19 +340,27 @@ bStatus_t ota_cmd_dispatcher(
         ota_cmd_args_verify_t verify_args;
     } args;
 
+    unsigned int new_length = OTA_IO_BUFFER_SIZE;
+    bStatus_t status;
+
     switch(opcode) {
         case OTA_CMD_OPCODE_READ: 
             // Read command
             tmos_memcpy(&args.read_args.address, buffer + 1, sizeof(uint32_t));
             tmos_memcpy(&args.read_args.length, buffer + 1 + sizeof(uint32_t), sizeof(uint32_t));
             args.read_args.buffer = (uint8_t *)io_buffer; // Use the IO buffer for read data
-            args.read_args.buffer_length = io_buffer_length; // Length of the IO buffer
-            return ota_cmd_do_read(&args.read_args); // Call the read command handler
+            args.read_args.buffer_length = &new_length; // Length of the IO buffer
+            status = ota_cmd_do_read(&args.read_args); // Call the read command handler
+            if(status == SUCCESS) {
+                *io_buffer_length = new_length;
+                return SUCCESS;
+            }
+            return status;
         case OTA_CMD_OPCODE_PROGRAM: 
             // Program command
             tmos_memcpy(&args.program_args.address, buffer + 1, sizeof(uint32_t));
             args.program_args.data = (uint8_t *)io_buffer; // Use the IO buffer for program data
-            args.program_args.length = io_buffer_length; // Length of data to program is the IO buffer length
+            args.program_args.length = *io_buffer_length; // Length of data to program is the IO buffer length
             return ota_cmd_do_program(&args.program_args); // Call the program command handler
         case OTA_CMD_OPCODE_ERASE: 
             // Erase command
@@ -316,8 +372,19 @@ bStatus_t ota_cmd_dispatcher(
             tmos_memcpy(&args.verify_args.address, buffer + 1, sizeof(uint32_t));
             tmos_memcpy(&args.verify_args.length, buffer + 1 + sizeof(uint32_t), sizeof(uint32_t));
             args.verify_args.result = (uint8_t *)io_buffer; // Use the IO buffer for verification result
-            args.verify_args.result_length = &io_buffer_length; // Length of the result buffer is the IO buffer length
-            return ota_cmd_do_verify(&args.verify_args); // Call the verify command handler
+            args.verify_args.result_length = &new_length; // Length of the result buffer is the IO buffer length
+            status = ota_cmd_do_verify(&args.verify_args); // Call the verify command handler
+            if(status == SUCCESS) {
+                *io_buffer_length = new_length;
+                return SUCCESS;
+            }
+            return status;
+        case OTA_CMD_OPCODE_REBOOT:
+            // Reboot command
+            return ota_cmd_do_reboot(); // Call the reboot command handler
+        case OTA_CMD_OPCODE_CONFIRM:
+            // Confirm command
+            return ota_cmd_do_confirm(); // Call the confirm command handler
         default:
             // Unknown command opcode
             // Should not happen if the command has been validated before
@@ -332,7 +399,7 @@ bStatus_t ota_cmd_dispatcher(
  * @param buffer Pointer to the buffer containing the OTA command
  * @param length Length of the OTA command in the buffer
  * @param io_buffer Pointer to the IO buffer where the command data is stored
- * @param io_buffer_length Length of the IO buffer
+ * @param io_buffer_length Pointer to the length of the IO buffer
  * @param challenge Pointer to the challenge data used for authentication
  * @param challenge_length Length of the challenge data
  * @param token Pointer to the token data used for authentication
@@ -344,7 +411,7 @@ bStatus_t ota_cmd_handler(
     const uint8_t *buffer,
     uint32_t length,
     const uint8_t *io_buffer,
-    uint32_t io_buffer_length,
+    uint32_t *io_buffer_length,
     const uint8_t *challenge,
     uint32_t challenge_length,
     const uint8_t *token,
@@ -357,7 +424,7 @@ bStatus_t ota_cmd_handler(
     }
 
     // Step 2: Authenticate the OTA command
-    status = ota_cmd_is_authenticated(buffer, length, io_buffer, io_buffer_length, challenge, challenge_length, token, token_length);
+    status = ota_cmd_is_authenticated(buffer, length, io_buffer, *io_buffer_length, challenge, challenge_length, token, token_length);
     if (status != SUCCESS) {
         return status; // Authentication failed
     }

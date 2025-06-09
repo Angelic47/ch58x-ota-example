@@ -112,7 +112,7 @@ static uint8_t otaProfileChar4Props = GATT_PROP_READ | GATT_PROP_WRITE | GATT_PR
 
 // Characteristic 4 Value
 static uint8_t otaProfileChar4Val[16] = {0};
-static uint32_t otaProfileChar4Len = 0;
+static uint32_t otaProfileChar4Len = 16;
 static uint32_t otaProfileChar4IsWritting = 0;
 
 // Characteristic 4 User Description
@@ -767,7 +767,7 @@ static bStatus_t OTAProfile_WriteAttrCB(
                 pValue, 
                 len, 
                 otaProfileChar2Val,
-                otaProfileChar2Len,
+                &otaProfileChar2Len,
                 otaProfileChar3Val,
                 otaProfileChar3Len,
                 otaProfileChar4Val,
