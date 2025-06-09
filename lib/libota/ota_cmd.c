@@ -5,6 +5,9 @@
 
 #include "ota_cmd.h"
 #include "aes_cmac_impl.h"
+#include "ota_flash_layout.h"
+#include "eeprom_flags.h"
+#include "ota_async_event.h"
 
 #ifndef OTA_GATT_AES128_KEY_BYTES
 #error "OTA module needs a 128-bit AES-CMAC Key defined in platformio.ini or build CFLAGS!"
@@ -125,7 +128,7 @@ bStatus_t ota_cmd_is_authenticated(
     );
 
     // 5. Compare the calculated MAC with the provided token
-    if(tmos_memcmpy(
+    if(tmos_memcmp(
         token, 
         aes_cmac_challenge_full_buffer + 16 + 16 + 16, 
         16
@@ -136,24 +139,111 @@ bStatus_t ota_cmd_is_authenticated(
     return SUCCESS;
 }
 
+/**
+ * @brief Check if the address and length are valid for the OTA command
+ * 
+ * @param address Address to check
+ * @param length Length to check
+ * @param current_flash_bank Current flash bank (A or B)
+ * 
+ * @return bStatus_t Result of the address and length check
+ */
+bStatus_t ota_cmd_address_length_check(
+    uint32_t address, 
+    uint32_t length, 
+    current_flash_bank_t current_flash_bank
+) {
+    if(length == 0) {
+        return bleInvalidRange; // Length cannot be zero
+    }
+    if(length > OTA_FLASH_BANK_SIZE) {
+        return bleInvalidRange; // Length exceeds maximum allowed length
+    }
+    switch(current_flash_bank) {
+        case FLASH_BANK_A:
+            if(address < OTA_FLASH_BANK_A_ENTRY)
+                return bleInvalidRange; // Address out of bounds for Bank A
+            if(address > OTA_FLASH_BANK_A_FULL)
+                return bleInvalidRange; // Address or length out of bounds for Bank A
+            if((address + length) > OTA_FLASH_BANK_A_END)
+                return bleInvalidRange; // Address + length exceeds Bank A bounds
+            break;
+        case FLASH_BANK_B:
+            if(address < OTA_FLASH_BANK_B_ENTRY)
+                return bleInvalidRange; // Address out of bounds for Bank B
+            if(address > OTA_FLASH_BANK_B_FULL)
+                return bleInvalidRange; // Address or length out of bounds for Bank B
+            if((address + length) > OTA_FLASH_BANK_B_END)
+                return bleInvalidRange; // Address + length exceeds Bank B bounds
+            break;
+        default:
+            // Should not happen, invalid flash bank, indicating EEPROM is corrupted
+            return ATT_ERR_UNLIKELY; 
+    }
+    
+    return SUCCESS;
+}
+
 bStatus_t ota_cmd_do_read(ota_cmd_args_read_t *args) {
-    // todo: Implement the read command handling
-    return SUCCESS; // Placeholder for read command handling
+    bStatus_t status;
+
+    // Read can be used to read from either flash bank A or B
+    status = ota_cmd_address_length_check(
+        args->address, 
+        args->length, 
+        FLASH_BANK_A
+    );
+    if (status != SUCCESS) {
+        status = ota_cmd_address_length_check(
+            args->address, 
+            args->length, 
+            FLASH_BANK_B
+        );
+    }
+    if (status != SUCCESS) {
+        return status; // Address or length check failed
+    }
+
+    FLASH_ROM_READ(
+        args->address + args->length,
+        args->buffer,
+        args->length
+    );
+
+    return SUCCESS;
 }
 
 bStatus_t ota_cmd_do_program(ota_cmd_args_program_t *args) {
-    // todo: Implement the program command handling
-    return SUCCESS; // Placeholder for program command handling
+    bStatus_t status;
+
+    // Write can only be used to program the flash bank that is not currently active
+    status = ota_cmd_address_length_check(
+        args->address, 
+        args->length, 
+        ota_get_flags_current_flash_bank() == FLASH_BANK_A ? FLASH_BANK_B : FLASH_BANK_A
+    );
+
+    if (status != SUCCESS) {
+        return status; // Address or length check failed
+    }
+
+    status = FLASH_ROM_WRITE(
+        args->address,
+        args->data,
+        args->length
+    );
+
+    return status;
 }
 
 bStatus_t ota_cmd_do_erase(ota_cmd_args_erase_t *args) {
-    // todo: Implement the erase command handling
-    return SUCCESS; // Placeholder for erase command handling
+    // Schedule an asynchronous erase operation
+    return ota_start_async_erase(args->address, args->length);
 }
 
 bStatus_t ota_cmd_do_verify(ota_cmd_args_verify_t *args) {
-    // todo: Implement the verify command handling
-    return SUCCESS; // Placeholder for verify command handling
+    // Schedule an asynchronous verify operation
+    return ota_start_async_verify(args->address, args->length, args->result, args->result_length);
 }
 
 /**
@@ -206,7 +296,7 @@ bStatus_t ota_cmd_dispatcher(
             tmos_memcpy(&args.verify_args.address, buffer + 1, sizeof(uint32_t));
             tmos_memcpy(&args.verify_args.length, buffer + 1 + sizeof(uint32_t), sizeof(uint32_t));
             args.verify_args.result = (uint8_t *)io_buffer; // Use the IO buffer for verification result
-            args.verify_args.result_length = io_buffer_length; // Length of the result buffer is the IO buffer length
+            args.verify_args.result_length = &io_buffer_length; // Length of the result buffer is the IO buffer length
             return ota_cmd_do_verify(&args.verify_args); // Call the verify command handler
         default:
             // Unknown command opcode

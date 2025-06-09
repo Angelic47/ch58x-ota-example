@@ -5,6 +5,7 @@
 
 #include "ota_gatt_profile.h"
 #include "eeprom_flags.h"
+#include "ota_async_event.h"
 #include "ota_cmd.h"
 
 // GATT Profile Service UUID
@@ -80,10 +81,10 @@ static const gattAttrType_t otaProfileService = {
 };
 
 // Characteristic 1 Properties
-static uint8_t otaProfileChar1Props = GATT_PROP_WRITE | GATT_PROP_WRITE_NO_RSP;
+static uint8_t otaProfileChar1Props = GATT_PROP_READ | GATT_PROP_WRITE | GATT_PROP_WRITE_NO_RSP;
 
 // Characteristic 1 User Description
-static uint8_t otaProfileChar1UserDesc[] = "OTA Command";
+static uint8_t otaProfileChar1UserDesc[] = "OTA Command Control & Status Readback";
 
 // Characteristic 2 Properties
 static uint8_t otaProfileChar2Props = GATT_PROP_READ | GATT_PROP_WRITE | GATT_PROP_WRITE_NO_RSP;
@@ -492,9 +493,26 @@ gattServiceCBs_t otaProfileCBs = {
     .pfnAuthorizeAttrCB = NULL // Not used
 };
 
+void OTAProfile_RandomNextChallenge(void)
+{
+    // Generate a new random challenge token
+    for(uint32_t i = 0; i < otaProfileChar3Len; i += 4)
+    {
+        uint32_t randVal = tmos_rand();
+        // Copy the random value into the challenge token
+        tmos_memcpy(&otaProfileChar3Val[i], &randVal, sizeof(uint32_t));
+    }
+}
+
 bStatus_t OTAProfile_AddService(void)
 {
     uint8_t status;
+
+    // Generate the first random challenge token
+    OTAProfile_RandomNextChallenge();
+
+    // Initialize the async event system
+    ota_async_event_init();
 
     // Register the service with the GATT server
     status = GATTServApp_RegisterService(
@@ -555,6 +573,14 @@ static bStatus_t OTAProfile_ReadAttrCB(
 
     switch(uuid)
     {
+        case OTA_GATT_PROFILE_CHAR_UUID_MAIN:
+            // Read the OTA main characteristic
+            if(maxLen < sizeof(uint8_t) + sizeof(uint8_t))
+                return ATT_ERR_INVALID_VALUE_SIZE; // Ensure enough space for uint8_t
+            *pLen = sizeof(uint8_t) + sizeof(uint8_t); // 1 byte for status, 1 byte for async event status
+            *((uint8_t *)pValue) = ota_is_busy_flag();
+            *((uint8_t *)pValue + 1) = ota_get_async_event_status();
+            return SUCCESS;
         case OTA_GATT_PROFILE_CHAR_UUID_BUFFER:
             // Read the OTA IO buffer
             return OTA_PerpareRead_Handler(
@@ -576,7 +602,7 @@ static bStatus_t OTAProfile_ReadAttrCB(
                 otaProfileChar3Len
             );
         case OTA_GATT_PROFILE_CHAR_UUID_TOKEN:
-            // Read the OTA token
+            // Read the OTA authentication token
             return OTA_PerpareRead_Handler(
                 pValue, 
                 pLen, 
@@ -725,12 +751,19 @@ static bStatus_t OTAProfile_WriteAttrCB(
         return ATT_ERR_INVALID_HANDLE; // Invalid attribute handle
     }
     uint16_t uuid = BUILD_UINT16(pAttr->type.uuid[0], pAttr->type.uuid[1]);
+    bStatus_t status;
+
+    if(ota_is_busy_flag())
+    {
+        // Still handling an OTA asynchronous event, cannot perform new write
+        return ATT_ERR_WRITE_NOT_PERMITTED; 
+    }
 
     switch(uuid)
     {
         case OTA_GATT_PROFILE_CHAR_UUID_MAIN:
             // Handle OTA command
-            return ota_cmd_handler(
+            status = ota_cmd_handler(
                 pValue, 
                 len, 
                 otaProfileChar2Val,
@@ -740,9 +773,10 @@ static bStatus_t OTAProfile_WriteAttrCB(
                 otaProfileChar4Val,
                 otaProfileChar4Len
             );
+            break;
         case OTA_GATT_PROFILE_CHAR_UUID_BUFFER:
             // Write to the OTA IO buffer
-            return OTA_PrepareWrite_Handler(
+            status = OTA_PrepareWrite_Handler(
                 otaProfileChar2Val, 
                 &otaProfileChar2Len, 
                 &otaProfileChar2IsWritting,
@@ -752,8 +786,10 @@ static bStatus_t OTAProfile_WriteAttrCB(
                 offset,
                 method
             );
+            break;
         case OTA_GATT_PROFILE_CHAR_UUID_TOKEN:
             // Write the signature token
+            // Directly return, this should not affect the challenge token
             return OTA_PrepareWrite_Handler(
                 otaProfileChar4Val, 
                 &otaProfileChar4Len, 
@@ -767,4 +803,6 @@ static bStatus_t OTAProfile_WriteAttrCB(
         default:
             return ATT_ERR_ATTR_NOT_FOUND; // Attribute not found
     }
+    OTAProfile_RandomNextChallenge();
+    return status;
 }

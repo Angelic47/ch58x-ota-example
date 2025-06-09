@@ -14,17 +14,16 @@
 
 #include "CH58x_common.h"
 
-/*
-* Functions for AES-CMAC operations
+/** 
+* @brief Functions for AES-CMAC operations
 * These functions are used to compute the AES-CMAC of a message using a given key.
 * The AES-CMAC is a message authentication code based on the AES block cipher.
 * It is used to ensure the integrity and authenticity of the message.
 *
-* Parameters:
-* @key: Pointer to the AES key (16 bytes).
-* @msg: Pointer to the message to be authenticated.
-* @len: Length of the message in bytes.
-* @mac: Pointer to the output buffer where the computed MAC will be stored (16 bytes).
+* @param key: Pointer to the AES key (16 bytes).
+* @param msg: Pointer to the message to be authenticated.
+* @param len: Length of the message in bytes.
+* @param mac: Pointer to the output buffer where the computed MAC will be stored (16 bytes).
 */
 void AES_CMAC(uint8_t *key, uint8_t *msg, uint32_t len, uint8_t *mac);
 

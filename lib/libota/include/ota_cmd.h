@@ -38,7 +38,7 @@ typedef struct _ota_cmd_args_verify_t {
     uint32_t address; // Address to verify
     uint32_t length;  // Length of data to verify
     uint8_t *result;  // Pointer to store verification result (Hash value)
-    uint32_t result_length; // Length of the result buffer
+    uint32_t *result_length; // Length of the result buffer
 } ota_cmd_args_verify_t;
 
 // OTA command arguments length for each command
