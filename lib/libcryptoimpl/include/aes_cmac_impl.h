@@ -26,6 +26,6 @@
 * @len: Length of the message in bytes.
 * @mac: Pointer to the output buffer where the computed MAC will be stored (16 bytes).
 */
-void AES_CMAC(uint8_t *key, uint8_t *msg, size_t len, uint8_t *mac);
+void AES_CMAC(uint8_t *key, uint8_t *msg, uint32_t len, uint8_t *mac);
 
 #endif // __AES_CMAC_IMPL_H__

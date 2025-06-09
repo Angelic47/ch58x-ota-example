@@ -39,11 +39,11 @@ void generate_subkey(uint8_t *key, uint8_t *K1, uint8_t *K2) {
     }
 }
 
-void AES_CMAC(uint8_t *key, uint8_t *msg, size_t len, uint8_t *mac) {
+void AES_CMAC(uint8_t *key, uint8_t *msg, uint32_t len, uint8_t *mac) {
     uint8_t K1[16], K2[16];
     generate_subkey(key, K1, K2);
 
-    size_t n = (len + 15) / 16;
+    uint32_t n = (len + 15) / 16;
     int last_block_complete = (len % 16 == 0) && (len != 0);
 
     uint8_t M_last[16] = {0};
@@ -60,7 +60,7 @@ void AES_CMAC(uint8_t *key, uint8_t *msg, size_t len, uint8_t *mac) {
         if (last_block_complete) {
             xor_128(&msg[16 * (n - 1)], K1, M_last);
         } else {
-            size_t last_len = len % 16;
+            uint32_t last_len = len % 16;
             memset(block, 0, 16);
             memcpy(block, &msg[16 * (n - 1)], last_len);
             block[last_len] = 0x80;
@@ -69,7 +69,7 @@ void AES_CMAC(uint8_t *key, uint8_t *msg, size_t len, uint8_t *mac) {
     }
 
     // Process all blocks except the last
-    for (size_t i = 0; i < n - 1; i++) {
+    for (uint32_t i = 0; i < n - 1; i++) {
         xor_128(X, &msg[16 * i], block);
         AES_ENCRYPT(key, block, X);
     }

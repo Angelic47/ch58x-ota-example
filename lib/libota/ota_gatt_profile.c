@@ -5,13 +5,7 @@
 
 #include "ota_gatt_profile.h"
 #include "eeprom_flags.h"
-
-#ifndef OTA_GATT_AES128_KEY_BYTES
-#error "OTA module needs a 128-bit AES-CMAC Key defined in platformio.ini or build CFLAGS!"
-#error "This is required for secure OTA operations and cannot be omitted."
-#else
-const uint8_t ota_aes128_key[16] = OTA_GATT_AES128_KEY_BYTES;
-#endif
+#include "ota_cmd.h"
 
 // GATT Profile Service UUID
 const uint8_t otaProfileServiceUUID[ATT_BT_UUID_SIZE] = {
@@ -95,7 +89,7 @@ static uint8_t otaProfileChar1UserDesc[] = "OTA Command";
 static uint8_t otaProfileChar2Props = GATT_PROP_READ | GATT_PROP_WRITE | GATT_PROP_WRITE_NO_RSP;
 
 // Characteristic 2 Value
-static uint8_t otaProfileChar2Val[OTA_IO_BUFFER_SIZE] = {0};
+__attribute__((aligned(8))) static uint8_t otaProfileChar2Val[OTA_IO_BUFFER_SIZE] = {0};
 static uint32_t otaProfileChar2Len = 0;
 static uint32_t otaProfileChar2IsWritting = 0;
 
@@ -736,8 +730,16 @@ static bStatus_t OTAProfile_WriteAttrCB(
     {
         case OTA_GATT_PROFILE_CHAR_UUID_MAIN:
             // Handle OTA command
-            // todo: Implement command handling logic
-            return SUCCESS;
+            return ota_cmd_handler(
+                pValue, 
+                len, 
+                otaProfileChar2Val,
+                otaProfileChar2Len,
+                otaProfileChar3Val,
+                otaProfileChar3Len,
+                otaProfileChar4Val,
+                otaProfileChar4Len
+            );
         case OTA_GATT_PROFILE_CHAR_UUID_BUFFER:
             // Write to the OTA IO buffer
             return OTA_PrepareWrite_Handler(

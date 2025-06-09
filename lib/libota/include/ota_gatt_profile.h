@@ -8,9 +8,6 @@
 
 #include "ota_common.h"
 
-// 128-bit AES-CMAC Key
-extern const uint8_t ota_aes128_key[16];
-
 // GATT Profile Service UUID
 #define OTA_GATT_PROFILE_SERV_UUID 0xFFF0
 
