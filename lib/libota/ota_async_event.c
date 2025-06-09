@@ -146,7 +146,7 @@ uint16_t ota_process_event(uint8_t task_id, uint16_t events)
     // Handle asynchronous reboot operation
     if (events & OTA_ASYNC_EVENT_REBOOT) {
         // Perform the reboot operation
-        DisableAllIRQ();
+        SYS_DisableAllIrq(NULL);
         mDelaymS(10);
         SYS_ResetExecute();
         // This point should not be reached, as the system will reset
