@@ -10,6 +10,7 @@
 
 #define OTA_ASYNC_EVENT_ERASE 0x0001 // Event for asynchronous erase operation
 #define OTA_ASYNC_EVENT_VERIFY 0x0002 // Event for asynchronous verify operation
+#define OTA_ASYNC_EVENT_REBOOT 0x0004 // Event for asynchronous reboot operation
 
 // The main routine to process OTA events
 uint16_t ota_process_event(uint8_t task_id, uint16_t events);
@@ -25,6 +26,9 @@ bStatus_t ota_start_async_erase(uint32_t address, uint32_t length);
 
 // Function to start an asynchronous verify operation
 bStatus_t ota_start_async_verify(uint32_t address, uint32_t length, uint8_t *buffer, uint32_t *buffer_length);
+
+// Function to reboot the device after OTA operations
+bStatus_t ota_start_async_reboot(void);
 
 // Function to initialize the OTA asynchronous event system
 bStatus_t ota_async_event_init(void);

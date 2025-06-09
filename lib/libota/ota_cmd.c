@@ -246,6 +246,26 @@ bStatus_t ota_cmd_do_verify(ota_cmd_args_verify_t *args) {
     return ota_start_async_verify(args->address, args->length, args->result, args->result_length);
 }
 
+bStatus_t ota_cmd_do_reboot(void) {
+    // Schedule an asynchronous reboot operation
+    return ota_start_async_reboot();
+}
+
+bStatus_t ota_cmd_do_confirm(void) {
+    // Switch the current flash bank to the other bank
+    if(ota_get_flags_current_flash_bank() == FLASH_BANK_A) {
+        ota_set_flags_current_flash_bank(FLASH_BANK_B);
+    } else {
+        ota_set_flags_current_flash_bank(FLASH_BANK_A);
+    }
+    ota_set_flags_flash_mode_flag(FLASH_MODE_FLAG_FLASHED);
+    ota_set_flags_boot_reason_code(REASON_NORMAL);
+    ota_save_eeprom_flags();
+    
+    // Schedule an asynchronous reboot operation
+    return ota_start_async_reboot();
+}
+
 /**
  * @brief OTA command dispatcher
  * This function dispatches the OTA command based on the opcode in the buffer.

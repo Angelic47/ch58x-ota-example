@@ -12,6 +12,8 @@ typedef enum _ota_cmd_opcode_t{
     OTA_CMD_OPCODE_PROGRAM,
     OTA_CMD_OPCODE_ERASE,
     OTA_CMD_OPCODE_VERIFY,
+    OTA_CMD_OPCODE_REBOOT,
+    OTA_CMD_OPCODE_CONFIRM,
     OTA_CMD_OPCODE_MAX // This is used to determine the number of commands
 } ota_cmd_opcode_t;
 
@@ -57,6 +59,12 @@ typedef struct _ota_cmd_args_verify_t {
 // Verify command: address (4 bytes) + length (4 bytes)
 // data and result are from the IO buffer, so they are not included in the length
 #define OTA_CMD_ARGS_VERIFY_LEN (sizeof(uint32_t) + sizeof(uint32_t))
+
+// Reboot command: no arguments
+#define OTA_CMD_ARGS_REBOOT_LEN 0
+
+// Confirm command: no arguments
+#define OTA_CMD_ARGS_CONFIRM_LEN 0
 
 #define OTA_CMD_ARGS_MAX_LEN (OTA_CMD_ARGS_VERIFY_LEN + sizeof(uint8_t)) // +1 for the opcode
 

@@ -60,6 +60,18 @@ bStatus_t ota_start_async_verify(uint32_t address, uint32_t length, uint8_t *buf
     return tmos_set_event(event_task_id, OTA_ASYNC_EVENT_VERIFY);
 }
 
+bStatus_t ota_start_async_reboot(void)
+{
+    // Set the busy flag
+    ota_is_busy = 1;
+
+    // Set the status to pending
+    ota_async_event_status = blePending;
+
+    // Trigger the asynchronous reboot event
+    return tmos_set_event(event_task_id, OTA_ASYNC_EVENT_REBOOT);
+}
+
 uint16_t ota_process_event(uint8_t task_id, uint16_t events)
 {
     if(events & SYS_EVENT_MSG)
@@ -129,6 +141,18 @@ uint16_t ota_process_event(uint8_t task_id, uint16_t events)
 
         // Continue with the next read operation
         return events;
+    }
+
+    // Handle asynchronous reboot operation
+    if (events & OTA_ASYNC_EVENT_REBOOT) {
+        // Perform the reboot operation
+        DisableAllIRQ();
+        mDelaymS(10);
+        SYS_ResetExecute();
+        // This point should not be reached, as the system will reset
+        while (1) {
+            // Infinite loop to prevent further execution
+        }
     }
 
     // Discard unprocessed events
