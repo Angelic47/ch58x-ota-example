@@ -17,6 +17,13 @@
 __attribute__((aligned(8))) const uint8_t ota_aes128_key[16] = OTA_GATT_AES128_KEY_BYTES;
 #endif
 
+// Stupid WCH implemented a fully wrong memcmp function
+// CH58xBLE_LIB.h Line 2444:
+//    extern BOOL tmos_memcmp( const void *src1, const void *src2, uint32_t len ); // TRUE - same, FALSE - different
+// This is not compatible with the standard C memcmp function that returns 0 for equal buffers
+// Rename it to mem_equal to avoid confusion with the standard C memcmp function
+#define mem_equal tmos_memcmp
+
 // 16 bytes for buffer AES-CMAC, 16 bytes for io_buffer AES-CMAC, 16 bytes for challenge, 16 bytes for result
 __attribute__((aligned(8))) static char aes_cmac_challenge_full_buffer[16 + 16 + 16 + 16]; 
 __attribute__((aligned(8))) static char aes_cmac_temp_cmd_buffer[OTA_CMD_ARGS_MAX_LEN];
@@ -140,12 +147,12 @@ bStatus_t ota_cmd_is_authenticated(
         (uint8_t *)(aes_cmac_challenge_full_buffer + 16 + 16 + 16) 
     );
 
-    // 5. Compare the calculated MAC with the provided token
-    if(tmos_memcmp(
+    // 5. Compare the calculated AES-CMAC with the provided token
+    if(mem_equal(
         token, 
         aes_cmac_challenge_full_buffer + 16 + 16 + 16, 
         16
-    ) != 0) {
+    ) == 0) {
         return ATT_ERR_INSUFFICIENT_AUTHEN;
     }
 
@@ -336,7 +343,7 @@ bStatus_t ota_cmd_dispatcher(
         ota_cmd_args_verify_t verify_args;
     } args;
 
-    unsigned int new_length = OTA_IO_BUFFER_SIZE;
+    uint32_t new_length = OTA_IO_BUFFER_SIZE;
     bStatus_t status;
 
     switch(opcode) {
