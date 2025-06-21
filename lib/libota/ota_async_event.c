@@ -13,7 +13,7 @@ static uint32_t current_offset, cmd_address, cmd_length, *data_buffer_length;
 static uint8_t *data_buffer;
 static uint8_t event_task_id;
 static SHA256_CTX sha256_ctx;
-__attribute__((aligned(8))) static uint32_t sha256_hashbuf[256]; // SHA256 temp buffer
+__attribute__((aligned(8))) static uint8_t sha256_hashbuf[256]; // SHA256 temp buffer
 
 uint32_t ota_is_busy_flag(void)
 {
@@ -92,8 +92,8 @@ uint16_t ota_process_event(uint8_t task_id, uint16_t events)
         // Handle asynchronous erase operation
         uint8_t status;
         uint32_t erase_length = EEPROM_BLOCK_SIZE;
-        if (cmd_address - current_offset < erase_length) {
-            erase_length = cmd_address - current_offset; // Adjust length if less than block size
+        if (cmd_length - current_offset < erase_length) {
+            erase_length = cmd_length - current_offset; // Adjust length if less than block size
         }
         status = FLASH_ROM_ERASE(cmd_address + current_offset, erase_length);
         if (status != SUCCESS) {
@@ -117,10 +117,11 @@ uint16_t ota_process_event(uint8_t task_id, uint16_t events)
 
     if (events & OTA_ASYNC_EVENT_VERIFY) {
         // Handle asynchronous verify operation
-        uint32_t process_length = 256; // limit to 256 bytes per operation as SHA256 may take a long time
+        uint32_t process_length;
+        process_length = 256; // limit to 256 bytes per operation as SHA256 may take a long time
 
-        if (cmd_address - current_offset < process_length) {
-            process_length = cmd_address - current_offset; // Adjust length if less than 256 bytes
+        if (cmd_length - current_offset < process_length) {
+            process_length = cmd_length - current_offset; // Adjust length if less than 256 bytes
         }
         FLASH_ROM_READ(cmd_address + current_offset, sha256_hashbuf, process_length);
 

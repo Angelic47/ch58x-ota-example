@@ -43,7 +43,7 @@ const uint8_t ota_cmd_args_io_buffer_table[OTA_CMD_OPCODE_MAX] = {
     0, // Read command does not have io_buffer (readout buffer is used for response)
     1, // Program command has io_buffer (firmware buffer)
     0, // Erase command does not have io_buffer
-    1, // Verify command has io_buffer (sha256 out buffer)
+    0, // Verify command has io_buffer (sha256 out buffer is used for response)
     0, // Reboot command does not have io_buffer
     0, // Confirm command does not have io_buffer
 };
@@ -375,12 +375,8 @@ bStatus_t ota_cmd_dispatcher(
             tmos_memcpy(&args.verify_args.address, buffer + 1, sizeof(uint32_t));
             tmos_memcpy(&args.verify_args.length, buffer + 1 + sizeof(uint32_t), sizeof(uint32_t));
             args.verify_args.result = (uint8_t *)io_buffer; // Use the IO buffer for verification result
-            args.verify_args.result_length = &new_length; // Length of the result buffer is the IO buffer length
+            args.verify_args.result_length = io_buffer_length; // Length of the result buffer is the IO buffer length
             status = ota_cmd_do_verify(&args.verify_args); // Call the verify command handler
-            if(status == SUCCESS) {
-                *io_buffer_length = new_length;
-                return SUCCESS;
-            }
             return status;
         case OTA_CMD_OPCODE_REBOOT:
             // Reboot command
