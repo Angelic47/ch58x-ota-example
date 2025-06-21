@@ -40,7 +40,7 @@ const uint8_t ota_cmd_args_length_table[OTA_CMD_OPCODE_MAX] = {
 
 // Table for OTA command argument if the command has io_buffer
 const uint8_t ota_cmd_args_io_buffer_table[OTA_CMD_OPCODE_MAX] = {
-    1, // Read command has io_buffer (readout buffer)
+    0, // Read command does not have io_buffer (readout buffer is used for response)
     1, // Program command has io_buffer (firmware buffer)
     0, // Erase command does not have io_buffer
     1, // Verify command has io_buffer (sha256 out buffer)
@@ -227,7 +227,7 @@ bStatus_t ota_cmd_do_read(ota_cmd_args_read_t *args) {
     args->length = args->length > *args->buffer_length ? *args->buffer_length : args->length;
 
     FLASH_ROM_READ(
-        args->address + args->length,
+        args->address,
         args->buffer,
         args->length
     );
