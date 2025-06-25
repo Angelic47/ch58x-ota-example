@@ -92,7 +92,6 @@ static uint8_t otaProfileChar2Props = GATT_PROP_READ | GATT_PROP_WRITE | GATT_PR
 // Characteristic 2 Value
 __attribute__((aligned(8))) static uint8_t otaProfileChar2Val[OTA_IO_BUFFER_SIZE] = {0};
 static uint32_t otaProfileChar2Len = 0;
-static uint32_t otaProfileChar2IsWritting = 0;
 
 // Characteristic 2 User Description
 static uint8_t otaProfileChar2UserDesc[] = "OTA Buffer";
@@ -113,7 +112,6 @@ static uint8_t otaProfileChar4Props = GATT_PROP_READ | GATT_PROP_WRITE | GATT_PR
 // Characteristic 4 Value
 static uint8_t otaProfileChar4Val[16] = {0};
 static uint32_t otaProfileChar4Len = 16;
-static uint32_t otaProfileChar4IsWritting = 0;
 
 // Characteristic 4 User Description
 static uint8_t otaProfileChar4UserDesc[] = "OTA AES-CMAC Signature Token";
@@ -674,67 +672,30 @@ static bStatus_t OTAProfile_ReadAttrCB(
     }
 }
 
-static bStatus_t OTA_PrepareWrite_Handler(
+static bStatus_t OTA_Write_Handler(
     uint8_t *buffer,
     uint32_t *newBufLen,
-    uint32_t *isWriting,
     uint32_t bufferMaxLen,
     uint8_t *pValue, 
     uint16_t len, 
-    uint16_t offset,
-    uint8_t method
+    uint16_t offset
 )
 {
-    switch(method)
+    if(len + offset > bufferMaxLen)
     {
-        case ATT_PREPARE_WRITE_REQ:
-            // Prepare write request
-            // Check if the length is valid
-            if(len + offset > bufferMaxLen)
-            {
-                return ATT_ERR_INVALID_VALUE_SIZE; // Length exceeds buffer size
-            }
-            if((*isWriting) == 0)
-            {
-                // If offset is 0, we are starting a new write operation
-                tmos_memset(buffer, 0, bufferMaxLen); // Clear the buffer
-                *newBufLen = 0; // Reset the buffer length
-                *isWriting = 1; // Mark as writing
-            }
-            // Copy the value into the buffer at the specified offset
-            if((offset + len) > *newBufLen)
-            {
-                *newBufLen = offset + len; // Update the new buffer length
-            }
-            tmos_memcpy(&buffer[offset], pValue, len);
-            return SUCCESS; // Return success
-        case ATT_EXECUTE_WRITE_REQ:
-            // Execute write request
-            if((*isWriting) == 0)
-            {
-                return ATT_ERR_PREPARE_QUEUE_FULL; // No write operation in progress
-            }
-            // Finalize the write operation
-            *isWriting = 0; // Reset the writing flag
-            return SUCCESS;
-        case ATT_WRITE_REQ:
-        case ATT_WRITE_CMD:
-            // Handle direct write request
-            if(len > bufferMaxLen)
-            {
-                return ATT_ERR_INVALID_VALUE_SIZE; // Length exceeds buffer size
-            }
-            if(offset != 0)
-            {
-                return ATT_ERR_INVALID_OFFSET; // Offset must be zero for direct write
-            }
-            tmos_memcpy(buffer, pValue, len); // Copy the value directly into the buffer
-            *newBufLen = len; // Update the new buffer length
-            *isWriting = 0; // Reset the writing flag
-            return SUCCESS; // Return success
-        default:
-            return ATT_ERR_INVALID_PDU; // Invalid method
+        return ATT_ERR_INVALID_VALUE_SIZE;
     }
+    // Copy the value into the buffer at the specified offset
+    if(offset == 0)
+    {
+        *newBufLen = len;
+    }
+    else if((offset + len) > *newBufLen)
+    {
+        *newBufLen = offset + len; // Update the new buffer length
+    }
+    tmos_memcpy(&buffer[offset], pValue, len);
+    return SUCCESS; // Return success
 }
 
 static bStatus_t OTAProfile_WriteAttrCB(
@@ -776,29 +737,25 @@ static bStatus_t OTAProfile_WriteAttrCB(
             break;
         case OTA_GATT_PROFILE_CHAR_UUID_BUFFER:
             // Write to the OTA IO buffer
-            status = OTA_PrepareWrite_Handler(
+            status = OTA_Write_Handler(
                 otaProfileChar2Val, 
                 &otaProfileChar2Len, 
-                &otaProfileChar2IsWritting,
                 OTA_IO_BUFFER_SIZE, 
                 pValue, 
                 len, 
-                offset,
-                method
+                offset
             );
             break;
         case OTA_GATT_PROFILE_CHAR_UUID_TOKEN:
             // Write the signature token
             // Directly return, this should not affect the challenge token
-            return OTA_PrepareWrite_Handler(
+            return OTA_Write_Handler(
                 otaProfileChar4Val, 
                 &otaProfileChar4Len, 
-                &otaProfileChar4IsWritting,
                 sizeof(otaProfileChar4Val), 
                 pValue, 
                 len, 
-                offset,
-                method
+                offset
             );
         default:
             return ATT_ERR_ATTR_NOT_FOUND; // Attribute not found

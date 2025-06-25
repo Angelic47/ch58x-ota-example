@@ -183,17 +183,17 @@ bStatus_t ota_cmd_address_length_check(
         case FLASH_BANK_A:
             if(address < OTA_FLASH_BANK_A_ENTRY)
                 return bleInvalidRange; // Address out of bounds for Bank A
-            if(address > OTA_FLASH_BANK_A_FULL)
+            if(address > OTA_FLASH_BANK_A_END)
                 return bleInvalidRange; // Address or length out of bounds for Bank A
-            if((address + length) > OTA_FLASH_BANK_A_END)
+            if((address + length) > OTA_FLASH_BANK_A_FULL)
                 return bleInvalidRange; // Address + length exceeds Bank A bounds
             break;
         case FLASH_BANK_B:
             if(address < OTA_FLASH_BANK_B_ENTRY)
                 return bleInvalidRange; // Address out of bounds for Bank B
-            if(address > OTA_FLASH_BANK_B_FULL)
+            if(address > OTA_FLASH_BANK_B_END)
                 return bleInvalidRange; // Address or length out of bounds for Bank B
-            if((address + length) > OTA_FLASH_BANK_B_END)
+            if((address + length) > OTA_FLASH_BANK_B_FULL)
                 return bleInvalidRange; // Address + length exceeds Bank B bounds
             break;
         default:
