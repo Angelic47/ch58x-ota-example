@@ -12,6 +12,22 @@ boot_reason_code_t boot_reason_code;
 
 __attribute__((aligned(8))) bootloader_flash_eeprom_data_t eeprom_data;
 
+__attribute__((interrupt("WCH-Interrupt-fast")))
+__attribute__((section(".highcode")))
+void HardFault_Handler( void )
+{
+    // This is a hard fault handler, it will be called when the system encounters a hard fault.
+    // It is recommended to reset the system or enter a safe state.
+    LOG("Hard Fault occurred! System will reset...\r\n");
+    // Perform the reboot operation
+    SYS_DisableAllIrq(NULL);
+    SYS_ResetExecute();
+    // This point should not be reached, as the system will reset
+    while (1) {
+        // Infinite loop to prevent further execution
+    }
+}
+
 char *flash_bank_to_string(current_flash_bank_t bank)
 {
     switch (bank)

@@ -2,14 +2,14 @@
  * File Name          : main.c
  * Author             : WCH
  * Version            : V1.1
- * Date               : 2020/08/06
- * Description        : ����ӻ�Ӧ��������������ϵͳ��ʼ��
+ * Date               : 2019/11/05
+ * Description        : 外设从机应用主函数及任务系统初始化
  * Copyright (c) 2021 Nanjing Qinheng Microelectronics Co., Ltd.
  * SPDX-License-Identifier: Apache-2.0
  *******************************************************************************/
 
 /******************************************************************************/
-/* ͷ�ļ����� */
+/* 头文件包含 */
 #include "config.h"
 #include "HAL.h"
 #include "gattprofile.h"
@@ -26,9 +26,32 @@ const uint8_t MacAddr[6] = {0x84, 0xC2, 0xE4, 0x03, 0x02, 0x02};
 #endif
 
 /*********************************************************************
+ * @brief Hard Fault Handler
+ * This function is called when a hard fault occurs in the system.
+ * It will log the error and reset the system.
+ * @param None
+ * @return None
+ */
+__attribute__((interrupt("WCH-Interrupt-fast")))
+__attribute__((section(".highcode")))
+void HardFault_Handler( void )
+{
+    // This is a hard fault handler, it will be called when the system encounters a hard fault.
+    // It is recommended to reset the system or enter a safe state.
+    PRINT("Hard Fault occurred! System will reset...\r\n");
+    // Perform the reboot operation
+    SYS_DisableAllIrq(NULL);
+    SYS_ResetExecute();
+    // This point should not be reached, as the system will reset
+    while (1) {
+        // Infinite loop to prevent further execution
+    }
+}
+
+/*********************************************************************
  * @fn      Main_Circulation
  *
- * @brief   ��ѭ��
+ * @brief   主循环
  *
  * @return  none
  */
@@ -45,7 +68,7 @@ void Main_Circulation()
 /*********************************************************************
  * @fn      main
  *
- * @brief   ������
+ * @brief   主函数
  *
  * @return  none
  */
