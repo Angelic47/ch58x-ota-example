@@ -58,7 +58,7 @@ char *boot_reason_code_to_string(boot_reason_code_t code)
 void enter_bootrom_isp(void)
 {
     LOG("Entering Bootrom WCHISP...\r\n");
-    LOG("mstatus=%08x\r\n", read_csr(mstatus));
+    LOG("mstatus=%08lx\r\n", read_csr(mstatus));
 
     PFIC->IRER[0] = 0xffffffff;
     PFIC->IRER[1] = 0xffffffff;

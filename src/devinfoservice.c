@@ -13,6 +13,7 @@
  */
 #include "config.h"
 #include "devinfoservice.h"
+#include "libota.h"
 
 /*********************************************************************
  * MACROS
@@ -94,15 +95,15 @@ static uint8_t devInfoSystemId[DEVINFO_SYSTEM_ID_LEN] = {0, 0, 0, 0, 0, 0, 0, 0}
 
 // Model Number String characteristic
 static uint8_t       devInfoModelNumberProps = GATT_PROP_READ;
-static const uint8_t devInfoModelNumber[] = "Model Number";
+static const uint8_t devInfoModelNumber[] = "Example Model Number";
 
 // Serial Number String characteristic
 static uint8_t       devInfoSerialNumberProps = GATT_PROP_READ;
-static const uint8_t devInfoSerialNumber[] = "Serial Number";
+static const uint8_t devInfoSerialNumber[] = "Example Serial Number";
 
 // Firmware Revision String characteristic
 static uint8_t       devInfoFirmwareRevProps = GATT_PROP_READ;
-static const uint8_t devInfoFirmwareRev[] = "Firmware Revision";
+static const uint8_t devInfoFirmwareRev[] = "Example Firmware Revision (" __CURRENT_BUILD_BANK_STR__ " Build)";
 
 // Hardware Revision String characteristic
 static uint8_t       devInfoHardwareRevProps = GATT_PROP_READ;
